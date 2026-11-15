@@ -1,0 +1,376 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# docker-compose.yml — Nexus Compose / Vocal Vibecoding Factory
+#
+# USAGE :
+#   ./scripts/launch.sh                     # lancement standard (recommandé)
+#
+#   docker compose up --build               # 9 services de base
+#   docker compose --profile fullstack up   # + OpenHands (10 services)
+#   docker compose run  app python -m nexus_compose run
+#   docker compose exec app python -m pytest test/ -v
+#
+# PRÉ-REQUIS : scripts/bootstrap.sh doit avoir été exécuté au moins une fois.
+#
+# SERVICES (9 standard + 1 fullstack) :
+#   app            — nexus_compose CLI / orchestrateur (API HTTP à la demande, voir plus bas)
+#   neo4j          — graphe de connaissance (bolt:7687, http:7474)
+#   opa            — Open Policy Agent (http:8181)
+#   batfish        — analyseur réseau (grpc:9996, thrift:9997)
+#   threat-dragon  — modélisation des menaces (http:3000)
+#   leon           — assistant IA (http:1337)
+#   bridge         — pont Nexus Core <-> Leon (http:8420) — Mission 2, D5.1
+#   nexus-ui       — interface Network/Coding/Security/Registry (http:5173) — Mission 2, D5.1
+#   openhands      — [profile: fullstack] sandbox d'exécution de code (http:3001)
+#
+# NOUVEAU (Mission 2 — Meta Framework/Nexus Studio, D5.1) : `bridge` et
+# `nexus-ui` n'étaient orchestrés NULLE PART avant cette mission (ni ici, ni
+# dans scripts/*.sh) — chacun se lançait uniquement à la main, hors Docker,
+# suivant son propre README. Ce n'était pas un problème tant que le pont ne
+# faisait qu'un aller-retour vers Leon ; ça en devient un dès que D3/D4/D5
+# ajoutent de vraies fonctionnalités (GET /registry/full, l'outil ReAct
+# query_registry, l'onglet Registry de nexus-ui) qui ont besoin du pont ET
+# de nexus_compose joignables l'un par l'autre. Voir le service `bridge`
+# ci-dessous pour le détail de ce qui a dû être ajusté pour ça (CORS,
+# --host 0.0.0.0, hôtes internes au réseau Docker vs URLs côté navigateur).
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── APPLICATION PRINCIPALE ─────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: final
+    container_name: nexus-compose
+    restart: unless-stopped
+    privileged: true
+    # Reste en vie pour `docker compose exec app ...` / `docker compose run app ...`
+    # — comportement CONSERVÉ tel quel (Étape 5 du prompt de fusion a laissé
+    # ce choix ouvert ; gardé pour ne rien casser des workflows CLI déjà
+    # documentés ci-dessus). Pour lancer l'API HTTP (Nexus_Assistant/api/,
+    # Étape 1 du prompt de fusion) à la demande, une fois le conteneur up :
+    #   docker compose exec -d app uvicorn api.main:app --host 0.0.0.0 --port 8000
+    # ou directement scripts/start_api.sh (ajouté avec ce changement).
+    command: ["tail", "-f", "/dev/null"]
+    ports:
+      - "8000:8000"  # API HTTP (Étape 1/5 du prompt de fusion) — voir commande ci-dessus
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=nexuscompose
+      - OPA_URL=http://opa:8181
+      - THREAT_DRAGON_URL=http://threat-dragon:3000
+      - BATFISH_HOST=batfish
+      # :3000, PAS :3001 — 3001 est le port HÔTE du mapping "3001:3000" du
+      # service openhands (voir plus bas) ; sur le réseau Docker interne
+      # (ce service "app" -> "openhands"), c'est le port interne du
+      # conteneur qui doit être utilisé. Bug préexistant trouvé et corrigé
+      # en préparant l'Étape 5 du prompt de fusion — le service openhands
+      # lui-même s'auto-référence bien en :3000 (voir sa propre section
+      # plus bas dans ce fichier).
+      - OH_BASE_URL=http://openhands:3000
+      - PYTHONPATH=/app:/opt/openmanus_rl
+      # ── Config LLM UNIQUE (voir nexus_compose/llm_config.py) ────────────
+      # Un seul jeu de valeurs à définir dans .env — propagé ci-dessous à
+      # `openhands` (LLM_MODEL/LLM_API_KEY/LLM_BASE_URL) et à `leon`
+      # (LEON_<PROVIDER>_API_KEY + config.yml généré au démarrage). Avant ce
+      # correctif, q2d (phase 1) défaultait sur "gpt-4o" et crewAI (phase 6)
+      # sur "gpt-4o-mini" — deux modèles différents sans rapport entre eux.
+      - NEXUS_LLM_PROVIDER=${NEXUS_LLM_PROVIDER:-openai}
+      - NEXUS_LLM_MODEL=${NEXUS_LLM_MODEL:-gpt-4o-mini}
+      - NEXUS_LLM_API_KEY=${NEXUS_LLM_API_KEY:-${OPENAI_API_KEY:-}}
+      - NEXUS_LLM_BASE_URL=${NEXUS_LLM_BASE_URL:-}
+      # Alias de compat ascendante (code/scripts existants qui les lisent
+      # directement) — toujours dérivés des mêmes valeurs NEXUS_LLM_* ci-dessus.
+      - OPENAI_API_KEY=${NEXUS_LLM_API_KEY:-${OPENAI_API_KEY:-}}
+      - CREWAI_LLM_MODEL=${NEXUS_LLM_MODEL:-gpt-4o-mini}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      opa:
+        condition: service_started
+      batfish:
+        condition: service_started
+      threat-dragon:
+        condition: service_started
+    networks:
+      - nexus-net
+
+  # ── NEO4J ──────────────────────────────────────────────────────────────────
+  neo4j:
+    image: neo4j:5.18-community
+    container_name: nexus-neo4j
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=neo4j/nexuscompose
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=1G
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "nexuscompose", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - nexus-net
+
+  # ── OPEN POLICY AGENT ──────────────────────────────────────────────────────
+  opa:
+    image: openpolicyagent/opa:latest-static
+    container_name: nexus-opa
+    restart: unless-stopped
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --log-format=json
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./policies:/policies
+    networks:
+      - nexus-net
+
+  # ── BATFISH ────────────────────────────────────────────────────────────────
+  batfish:
+    image: batfish/allinone:latest
+    container_name: nexus-batfish
+    restart: unless-stopped
+    ports:
+      - "9996:9996"
+      - "9997:9997"
+    volumes:
+      - batfish_data:/data
+    networks:
+      - nexus-net
+
+  # ── OWASP THREAT DRAGON ────────────────────────────────────────────────────
+  threat-dragon:
+    image: owasp/threat-dragon:latest
+    container_name: nexus-threat-dragon
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - 'ENCRYPTION_KEYS=[{"isPrimary":true,"id":1,"value":"nexus-compose-key-32chars!!"}]'
+      - ENCRYPTION_JWT_SIGNING_KEY=nexus-jwt-secret-key
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+    ports:
+      - "3000:3000"
+    networks:
+      - nexus-net
+
+  # ── LEON AI (depuis zip local via stage Dockerfile) ────────────────────────
+  leon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: leon
+    container_name: nexus-leon
+    restart: unless-stopped
+    working_dir: /opt/leon
+    # pnpm install déplacé ici (hors du build Docker) pour éviter le conflit
+    # entre "packageManager":"pnpm@9.x.x" de Leon et pnpm@latest (v10.x).
+    # COREPACK_ENABLE_STRICT=0 → bypass le check de version packageManager.
+    # --no-frozen-lockfile → lockfile peut diverger hors de l'env d'origine.
+    #
+    # FIX (logique LLM unique, intégration Nexus Assistant) : Leon ne recevait
+    # AUCUNE config LLM (ni clé, ni modèle) — son NLU/LLM tournait sans lien
+    # avec le modèle utilisé par q2d/crewAI/OpenHands. Leon choisit son modèle
+    # via config.yml (`llm.default: "<provider>/<model>"`), pas une variable
+    # d'environnement — donc on génère/patche ce fichier au démarrage depuis
+    # NEXUS_LLM_PROVIDER/NEXUS_LLM_MODEL, et on exporte dynamiquement la
+    # variable LEON_<PROVIDER>_API_KEY attendue (ex: LEON_OPENAI_API_KEY),
+    # puisque Leon a une variable de clé différente par fournisseur.
+    command: >
+      sh -c "
+        export COREPACK_ENABLE_STRICT=0 &&
+        PROVIDER_UPPER=$$(echo $${NEXUS_LLM_PROVIDER:-openai} | tr '[:lower:]' '[:upper:]') &&
+        export LEON_$${PROVIDER_UPPER}_API_KEY=$${NEXUS_LLM_API_KEY:-} &&
+        [ -f config.yml ] || cp config.sample.yml config.yml &&
+        sed -i \"s|^\\([[:space:]]*default:[[:space:]]*\\).*|\\1\\\"$${NEXUS_LLM_PROVIDER:-openai}/$${NEXUS_LLM_MODEL:-gpt-4o-mini}\\\"|\" config.yml &&
+        pnpm install --no-frozen-lockfile --prefer-offline 2>/dev/null ||
+        npm install --legacy-peer-deps --prefer-offline &&
+        npm start
+      "
+    ports:
+      - "1337:1337"
+    environment:
+      - NODE_ENV=production
+      - LEON_LANG=${LEON_LANG:-fr-FR}
+      - COREPACK_ENABLE_STRICT=0
+      - NEXUS_LLM_PROVIDER=${NEXUS_LLM_PROVIDER:-openai}
+      - NEXUS_LLM_MODEL=${NEXUS_LLM_MODEL:-gpt-4o-mini}
+      - NEXUS_LLM_API_KEY=${NEXUS_LLM_API_KEY:-${OPENAI_API_KEY:-}}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:1337/api/v1/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - nexus-net
+
+  # ── PONT NEXUS CORE <-> LEON (nexus_core_leon_bridge) ──────────────────────
+  # Mission 2 (Meta Framework/Nexus Studio), D5.1. Contexte de build = la
+  # racine du monorepo (`..`, PAS `.`) : c'est un dépôt séparé de
+  # Nexus_Assistant, qui a besoin du code de Nexus_Brain (un autre dépôt
+  # frère) — voir nexus_core_leon_bridge/Dockerfile pour le détail complet
+  # de ce qui est/n'est pas copié dans l'image et pourquoi.
+  bridge:
+    build:
+      context: ..
+      dockerfile: nexus_core_leon_bridge/Dockerfile
+    container_name: nexus-bridge
+    restart: unless-stopped
+    ports:
+      - "8420:8420"  # GET /registry/full, /registry/nodes, POST /handle_turn, ...
+    environment:
+      # Hôtes internes au réseau Docker `nexus-net` (résolus par le DNS
+      # interne de Compose via le nom du service), PAS localhost/127.0.0.1
+      # — même distinction que OH_BASE_URL plus haut pour le service `app`.
+      - NEXUS_COMPOSE_API_URL=http://app:8000
+      - NEXUS_COMPOSE_API_TIMEOUT_S=10.0
+      # bridge/config.py défaut sur http://localhost:5366 pour LEON_BASE_URL
+      # — une valeur qui ne correspond à AUCUN port réellement exposé par le
+      # service `leon` ci-dessus (1337). Ni documentée ni référencée ailleurs
+      # dans nexus_core_leon_bridge/ (vérifié) : probablement un résidu d'un
+      # environnement de dev antérieur au lieu d'une vraie convention.
+      # Explicitement écrasée ici avec la bonne cible plutôt que corrigée
+      # dans bridge/config.py (hors périmètre de cette mission Docker —
+      # signalé ici pour que ça ne reste pas un piège silencieux).
+      - LEON_BASE_URL=http://leon:1337
+      - NEXUS_BRIDGE_DEFAULT_MODE=${NEXUS_BRIDGE_DEFAULT_MODE:-smart}
+      # Même config LLM UNIQUE que app/leon/openhands (voir plus haut) —
+      # bridge/llm_config.py les lit directement via son repli volontaire
+      # (_fallback_get_llm_config) puisque nexus_compose n'est pas importable
+      # dans ce conteneur (cf. Dockerfile du pont).
+      - NEXUS_LLM_PROVIDER=${NEXUS_LLM_PROVIDER:-openai}
+      - NEXUS_LLM_MODEL=${NEXUS_LLM_MODEL:-gpt-4o-mini}
+      - NEXUS_LLM_API_KEY=${NEXUS_LLM_API_KEY:-${OPENAI_API_KEY:-}}
+      - NEXUS_LLM_BASE_URL=${NEXUS_LLM_BASE_URL:-}
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      app:
+        condition: service_started
+      leon:
+        condition: service_started
+    networks:
+      - nexus-net
+    # NOTE IMPORTANTE (pas propre à ce service, mais qui le concerne au
+    # premier chef) : `app` reste en `tail -f /dev/null` par choix déjà
+    # documenté plus haut — son API HTTP (port 8000) ne démarre PAS toute
+    # seule. Tant que personne n'a fait
+    # `docker compose exec -d app scripts/start_api.sh`, ce pont tournera
+    # mais GET /registry/full dégradera en douceur vers les 14 nœuds Nexus
+    # Brain uniquement (cf. bridge/registry_aggregator.py — comportement
+    # voulu, pas un bug), sans les 169 nœuds nexus_compose.
+
+  # ── INTERFACE (nexus-ui) ─────────────────────────────────────────────────
+  # Mission 2 (Meta Framework/Nexus Studio), D5.1. Onglets Network / Coding /
+  # Security / Registry.
+  nexus-ui:
+    build:
+      context: ../nexus-ui
+      dockerfile: Dockerfile
+    container_name: nexus-ui
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      # http://localhost:PORT, PAS http://app:8000 ni http://bridge:8420 :
+      # ces variables VITE_* finissent dans le bundle JS exécuté par le
+      # NAVIGATEUR de l'utilisateur, pas par ce conteneur — le navigateur ne
+      # résout jamais les noms d'hôte internes au réseau Docker nexus-net,
+      # seulement ce qui est réellement joignable depuis la machine hôte
+      # (via les ports publiés ci-dessus, et "8000:8000"/"8420:8420" sur
+      # app/bridge). Confondre les deux est l'erreur la plus facile à faire
+      # ici — server-to-server (app/bridge/leon/openhands ci-dessus) et
+      # browser-to-server (ceci) ne partagent pas le même espace de noms.
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_BRIDGE_BASE_URL=http://localhost:8420
+    depends_on:
+      app:
+        condition: service_started
+      bridge:
+        condition: service_started
+    networks:
+      - nexus-net
+
+  # ── OPENHANDS (profile: fullstack) ────────────────────────────────────────
+  #
+  # Sandbox d'exécution de code pour le Unified System.
+  # Démarrage : docker compose --profile fullstack up -d openhands
+  #             ou ./scripts/launch.sh --fullstack
+  #
+  # Pré-requis : scripts/bootstrap.sh doit avoir extrait unified_system/OpenHands/
+  # avant que cette image puisse être construite localement.
+  # En fallback, on peut pointer vers l'image officielle :
+  #   image: docker.all-hands.dev/all-hands-ai/openhands:latest
+  #
+  openhands:
+    profiles: ["fullstack"]
+    build:
+      context: unified_system/OpenHands
+      dockerfile: containers/app/Dockerfile
+    container_name: nexus-openhands
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "3001:3000"
+    environment:
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:latest
+      - SANDBOX_USER_ID=${UID:-1000}
+      - WORKSPACE_BASE=${PWD}/workspace
+      - OH_BASE_URL=http://openhands:3000
+      # FIX (logique LLM unique, intégration Nexus Assistant) : OpenHands ne
+      # recevait auparavant QUE OPENAI_API_KEY, sans nom de modèle (LLM_MODEL)
+      # — il tournait donc sur son propre défaut interne, sans rapport avec
+      # le modèle réellement utilisé par crewAI (CREWAI_LLM_MODEL) ni q2d.
+      # LLM_MODEL / LLM_API_KEY / LLM_BASE_URL sont les vraies variables
+      # qu'OpenHands lit (confirmé dans son code source, cf. openhands/…
+      # et ses tests unitaires test_agent_server_env_override.py).
+      - LLM_MODEL=${NEXUS_LLM_MODEL:-gpt-4o-mini}
+      - LLM_API_KEY=${NEXUS_LLM_API_KEY:-${OPENAI_API_KEY:-}}
+      - LLM_BASE_URL=${NEXUS_LLM_BASE_URL:-}
+      - OPENAI_API_KEY=${NEXUS_LLM_API_KEY:-${OPENAI_API_KEY:-}}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - openhands_workspace:/opt/workspace
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    networks:
+      - nexus-net
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  batfish_data:
+  openhands_workspace:
+
+networks:
+  nexus-net:
+    driver: bridge

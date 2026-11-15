@@ -1,0 +1,10 @@
+rules:
+- id: nexus-threat-custom
+  languages:
+  - python
+  message: Security threat detected
+  metadata:
+    source: nexus_compose/tmdd
+    threat: {}
+  patterns: []
+  severity: WARNING

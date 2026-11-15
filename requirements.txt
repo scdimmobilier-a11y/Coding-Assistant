@@ -1,0 +1,109 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# requirements.txt — Nexus Compose / Vocal Vibecoding Factory
+# Repo : https://github.com/KELEBA-LAM/Vocale-vibecoding-
+# Python : >=3.11
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# INSTALL (tout) :
+#   pip install -r requirements.txt
+#
+# INSTALL (sélectif, ex. seulement Neo4j + Semgrep) :
+#   pip install neo4j semgrep
+#
+# OUTILS CLI (non-pip, à installer séparément) :
+#   likec4        →  npm install -g @likec4/cli
+#   dotnet        →  https://dotnet.microsoft.com  (pour C4InterFlow)
+#   structurizr   →  https://github.com/structurizr/cli  (JAR Java)
+#   containerlab  →  https://containerlab.dev/install/  (binaire Go)
+#   opa           →  https://www.openpolicyagent.org/docs/latest/#running-opa
+#   bearer        →  https://docs.bearer.com/reference/installation/
+#   codeql        →  https://github.com/github/codeql-cli-binaries
+#   leon          →  npm install  (https://github.com/leon-ai/leon)
+#
+# pytm / query2diagram (q2d) / tmdd : FOURNIS PAR nexus_vendor/, plus besoin
+# de pip install / git+https / zip séparés. `pip install -e nexus_vendor`
+# suffit ; nexus_compose/__init__.py les expose ensuite automatiquement en
+# top-level (`import pytm`, `import q2d`, `import tmdd`) au chargement.
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── PHASE 1 : CO-CONCEPTION ───────────────────────────────────────────────────
+# Query2Diagram — LLM engine (openai) + package Python (fourni par nexus_vendor)
+openai>=1.0.0
+
+
+# ── PHASE 2 : ARCHITECTURE C4 ────────────────────────────────────────────────
+# LikeC4    → CLI Node.js (npm install -g @likec4/cli) — aucune dépendance pip
+# C4InterFlow → dotnet CLI — aucune dépendance pip
+# Structurizr DSL → structurizr-cli JAR — aucune dépendance pip
+
+
+# ── PHASE 3 : INFRASTRUCTURE & RÉSEAU ────────────────────────────────────────
+# Containerlab → binaire Go — aucune dépendance pip
+# Jinja2 est utilisé dans drivers.py pour le rendu des templates Containerlab
+Jinja2>=3.0.0
+PyYAML>=6.0.0
+
+# Open Policy Agent → binaire Go — aucune dépendance pip
+# Batfish → pybatfish (SDK Python officiel)
+pybatfish>=2024.1.0
+
+
+# ── PHASE 4 : MODÉLISATION DES MENACES ───────────────────────────────────────
+# OWASP Threat Dragon → API REST (drivers.py utilise requests)
+requests>=2.31.0
+
+# OWASP pytm — Threat Modeling as Code (fourni par nexus_vendor, cf. en-tête)
+
+
+# ── PHASE 5 : KNOWLEDGE GRAPH ────────────────────────────────────────────────
+# Neo4j — driver Python officiel
+neo4j>=5.0.0
+
+# TMDD → binaire CLI — aucune dépendance pip
+
+
+# ── PHASE 6 : GÉNÉRATION DE CODE ─────────────────────────────────────────────
+# Leon → assistant vocal Node.js — aucune dépendance pip
+# Cursor / Claude Code → outils externes
+
+
+# ── PHASE 7 : AUDIT DU CODE ──────────────────────────────────────────────────
+# Semgrep — disponible à la fois comme CLI ET comme package pip
+semgrep>=1.45.0
+
+# Bearer → binaire CLI — aucune dépendance pip
+# CodeQL → codeql-cli binaire — aucune dépendance pip
+
+
+# ── UTILITAIRES TRANSVERSES ───────────────────────────────────────────────────
+# Utilisés dans drivers.py pour la sérialisation/désérialisation
+# (json, subprocess, pathlib, logging, shutil → stdlib Python, aucun pip)
+
+
+# ── DEV / TESTS ───────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-timeout>=2.3.0
+
+# ── API HTTP (Étape 1a du prompt de fusion) ───────────────────────────────────
+# api/main.py, api/pipeline.py, api/state.py — voir README.md, section
+# "Fusion frontend ↔ backend"
+fastapi>=0.110
+uvicorn[standard]>=0.29
+# httpx : requis par fastapi.testclient ET par test/test_api_pipeline.py
+# (httpx.AsyncClient + ASGITransport — TestClient synchrone ne convient pas
+# ici, voir la docstring de test_api_pipeline.py pour pourquoi), ET par
+# nexus_compose/llm_http.py — le client HTTP natif utilisé pour l'appel LLM
+# réel vers un fournisseur installé depuis le dashboard "Connexion API"
+# (voir api/providers.py).
+httpx>=0.27
+anyio>=4.0
+
+# ── LLM unique = Claude (Étape 4 du prompt de fusion) ─────────────────────────
+# Requis pour que crewAI (unified_system) route bien vers Claude quand
+# NEXUS_LLM_PROVIDER=anthropic. Trouvé en testant réellement, pas en lisant
+# le code : crewAI récent utilise des classes "native provider" par
+# fournisseur (AnthropicCompletion) et lève ImportError sans ce paquet —
+# ce n'est pas un simple repli silencieux vers LiteLLM. Voir Dockerfile,
+# FIX #4, pour le même correctif côté image Docker.
+anthropic>=0.40
