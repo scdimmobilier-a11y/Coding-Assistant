@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+# FIX (intégration Nexus Assistant) : "setuptools.backends.legacy:build" n'existe pas
+# dans setuptools moderne → pip install échouait. Corrigé vers le backend standard.
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexus-vendor"
+version = "2.0.0"
+description = "Sources extraits des 14 outils tiers du pipeline Nexus Compose"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Boazo Isaac KELEBA" }]
+
+# Dépendances requises pour les 3 modules Python vendorisés
+dependencies = [
+  "pydantic>=2.0",   # q2d
+  "networkx>=3.0",   # q2d
+  "pyyaml>=6.0",     # tmdd
+  "jinja2>=3.1",     # tmdd
+]
+
+[project.optional-dependencies]
+llm    = ["openai>=1.0", "anthropic>=0.30"]
+neo4j  = ["neo4j>=5.0"]
+batfish = ["pybatfish>=2024.1", "pandas>=2.0"]
+all    = ["nexus-vendor[llm,neo4j,batfish]"]
+
+[tool.setuptools]
+# FIX (intégration Nexus Assistant) : ce pyproject.toml vit À L'INTÉRIEUR du
+# dossier nexus_vendor/ lui-même (pas dans un dossier parent qui contiendrait
+# nexus_vendor/ comme sous-dossier). L'ancien `packages.find` avec
+# `where=["."]` + `include=["nexus_vendor*"]` cherchait un sous-paquet nommé
+# "nexus_vendor" À L'INTÉRIEUR de "." — qui n'existe pas — et ne trouvait donc
+# RIEN (MAPPING vide, `import nexus_vendor` échouait après `pip install`).
+# On remappe explicitement "." → le paquet racine "nexus_vendor".
+package-dir = { "nexus_vendor" = "." }
+packages = [
+    "nexus_vendor",
+    "nexus_vendor.pytm",
+    "nexus_vendor.q2d",
+    "nexus_vendor.q2d.common",
+    "nexus_vendor.q2d.datasets",
+    "nexus_vendor.q2d.datasets.set_similarity_search",
+    "nexus_vendor.q2d.generation",
+    "nexus_vendor.q2d.training",
+    "nexus_vendor.tmdd",
+    "nexus_vendor.tmdd.commands",
+    "nexus_vendor.tmdd.generators",
+]
+
+[tool.setuptools.package-data]
+"nexus_vendor.pytm" = ["threatlib/*.json"]
+"nexus_vendor.tmdd" = ["templates/**/*.yaml"]

@@ -1,0 +1,11 @@
+# =============================================================================
+# Threat Catalog - What can go wrong
+# =============================================================================
+# Reusable threat definitions. Add threats as you identify them.
+# IDs are symbolic names matching ^[a-z][a-z0-9_]*$ (e.g. sql_injection, xss)
+#
+# STRIDE categories: S=Spoofing, T=Tampering, R=Repudiation,
+#                    I=Information Disclosure, D=Denial of Service, E=Elevation
+# =============================================================================
+
+threats: {}

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexus_unified"
+version = "0.1.0"
+description = "Laboratoire GPU/RL et gouvernance Apex par-dessus nexus_compose (lots 0-4, 9 exigences)"
+requires-python = ">=3.10"
+dependencies = ["httpx>=0.24"]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.1"]
+neo4j = ["neo4j>=5"]
+yara = ["yara-python>=4"]
+
+[tool.setuptools]
+packages = ["nexus_unified", "nexus_unified.security", "nexus_unified.accelerators",
+            "nexus_unified.llm", "nexus_unified.store", "nexus_unified.pack",
+            "nexus_unified.apex", "nexus_unified.training", "nexus_unified.learning"]
+package-dir = {"nexus_unified" = "."}

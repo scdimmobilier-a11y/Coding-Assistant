@@ -1,0 +1,10 @@
+# Threat Actors - Potential adversaries
+threat_actors:
+  - id: external_opportunistic
+    description: External attacker (opportunistic, low skill)
+  - id: external_targeted
+    description: External attacker (targeted, high skill)
+  - id: malicious_insider
+    description: Malicious insider (authenticated user)
+  - id: compromised_third_party
+    description: Compromised third-party service

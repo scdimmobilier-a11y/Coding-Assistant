@@ -1,0 +1,283 @@
+#!/bin/bash
+# Test script for unified rollout with debugger functionality
+
+# Create timestamp for this run
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+BASE_DIR="experiments/unified_debug_${TIMESTAMP}"
+
+# Model server endpoints
+QWEN3_8B_URL="${QWEN3_8B_URL:-http://129.212.187.116:8001}"
+QWEN72B_URL="${QWEN72B_URL:-http://129.212.188.142:8001}"
+QWEN3_32B_URL="${QWEN3_32B_URL:-http://134.199.197.179:8001}"
+
+# Export empty API key for local vLLM servers
+export OPENAI_API_KEY="${OPENAI_API_KEY:-EMPTY}"
+
+# Optional: route calls via Together AI
+# Set TOGETHER_ARG="--together rollout", "--together debugger" or "--together both"
+# Example usage:
+#   TOGETHER_API_KEY=sk-xxx TOGETHER_ARG="--together both" \\
+#   ROLLOUT_MODEL="kunlunz2/Qwen/Qwen3-8B-9f9838eb" \\
+#   DEBUGGER_MODEL="kunlunz2/Qwen/Qwen3-8B-9f9838eb" \\
+#   bash scripts/rollout/test_unified_debugger.sh
+TOGETHER_ARG="${TOGETHER_ARG:---together rollout}"
+
+TOGETHER_DEFAULT_MODEL="kunlunz2/Qwen/Qwen3-8B-9f9838eb"
+TOGETHER_DEFAULT_BASE_URL="${TOGETHER_API_BASE_URL:-https://api.together.xyz/v1}"
+
+# Configuration
+#ROLLOUT_MODEL="${ROLLOUT_MODEL:-qwen3-8b}"
+# ROLLOUT_URL="${ROLLOUT_URL:-${QWEN3_8B_URL}/v1}"
+# DEBUGGER_MODEL="${DEBUGGER_MODEL:-qwen2.5-72b-instruct}"
+# ROLLOUT_MODEL="${ROLLOUT_MODEL:-qwen3-8b}"
+# DEBUGGER_MODEL="${DEBUGGER_MODEL:-qwen3-32b}"
+# DEBUGGER_URL="${DEBUGGER_URL:-${QWEN3_32B_URL}/v1}"
+#ROLLOUT_MODEL="${ROLLOUT_MODEL:-gpt-4o-mini}"
+ROLLOUT_MODEL="${ROLLOUT_MODEL:-kunlunz2/Qwen/Qwen3-8B-9f9838eb}"
+DEBUGGER_MODEL="${DEBUGGER_MODEL:-gpt-4.1}"
+ROLLOUT_URL="${ROLLOUT_URL:-}"
+DEBUGGER_URL="${DEBUGGER_URL:-}"
+ROLLOUT_SPLIT="${ROLLOUT_SPLIT:-test}"
+
+if [[ -n "${TOGETHER_ARG}" ]]; then
+  ROLLOUT_MODEL="${ROLLOUT_MODEL:-${TOGETHER_DEFAULT_MODEL}}"
+  DEBUGGER_MODEL="${DEBUGGER_MODEL:-${TOGETHER_DEFAULT_MODEL}}"
+  ROLLOUT_URL="${ROLLOUT_URL:-${TOGETHER_DEFAULT_BASE_URL}}"
+  DEBUGGER_URL="${DEBUGGER_URL:-${TOGETHER_DEFAULT_BASE_URL}}"
+fi
+
+normalize_base_url() {
+  local raw="$1"
+  if [[ -z "${raw}" ]]; then
+    return
+  fi
+  raw="${raw%/}"
+  if [[ "${raw}" == *"/v1" ]]; then
+    printf '%s' "${raw}"
+  else
+    printf '%s/v1' "${raw}"
+  fi
+}
+
+ROLLOUT_URL="$(normalize_base_url "${ROLLOUT_URL}")"
+DEBUGGER_URL="$(normalize_base_url "${DEBUGGER_URL}")"
+
+echo "=== Configuration ==="
+echo "Rollout: model=${ROLLOUT_MODEL}, url=${ROLLOUT_URL}"
+echo "Debugger: model=${DEBUGGER_MODEL}, url=${DEBUGGER_URL}"
+echo "AlfWorld split: ${ROLLOUT_SPLIT}"
+echo ""
+
+# Test 1: WebShop with debugger
+# echo "=== Test 1: WebShop with Debugger ==="
+# RUN_DIR="${BASE_DIR}/webshop"
+# echo "Run directory: ${RUN_DIR}"
+
+# python scripts/rollout/openmanus_rollout_debugger.py \
+#     --env webshop \
+#     --total_envs 10 \
+#     --test_times 1 \
+#     --start_id 1 \
+#     --max_steps 30 \
+#     --history_length 40 \
+#     --use_summary \
+#     --model "${ROLLOUT_MODEL}" \
+#     --temperature 0.0 \
+#     --webshop_train \
+#     --enable_debugger \
+#     --max_try 5 \
+#     --debugger_model "${DEBUGGER_MODEL}" \
+#     --debugger_type continue \
+#     --debugger_temperature 0.0 \
+#     --experiment_dir "${RUN_DIR}" \
+#     --save_all_attempts \
+#     --save_per_task_trajectories \
+#     --debug \
+#     --concurrency 10 \
+#     --llm_concurrency 20
+
+# Test 1 (Alternative): AlfWorld with debugger - COMMENTED OUT
+# echo "=== Test 1: AlfWorld with Debugger ==="
+# RUN_DIR="${BASE_DIR}/alfworld"
+# echo "Run directory: ${RUN_DIR}"
+#test_time is the number of times to run the same task
+#total_envs is the number of tasks to run
+#start_id is the starting index of the task
+#max_steps is the maximum number of steps to run
+#history_length is the length of the history
+#model is the model to use
+#temperature is the temperature to use
+#enable_debugger is the flag to enable the debugger
+#max_try is the maximum number of retries
+#debugger_model is the model to use for the debugger
+#debugger_type is the type of the debugger
+#debugger_temperature is the temperature to use for the debugger
+#experiment_dir is the directory to save the results
+#save_all_attempts is the flag to save all attempts
+#save_per_task_trajectories is the flag to save the trajectories for each task
+#unique_envs is the flag to ensure that each task is run with a unique environment
+#debug is the flag to enable the debug mode
+#concurrency is the number of concurrent tasks to run
+#llm_concurrency is the number of concurrent LLM requests to run
+
+# python scripts/rollout/openmanus_rollout_debugger.py \
+#   --env alfworld \
+#   --total_envs 10 \
+#   --test_times 1 \
+#   --start_id 41 \
+#   --history_length 40 \
+#   --strategy tot \
+#   --beam_size 4 \
+#   --value_threshold 0.2 \
+#   --max_try 3 \
+#   --model gpt-4o-mini \
+#   --temperature 0.4 \
+#   --max_steps 15 \
+#   --concurrency 10 \
+#   --llm_concurrency 50 \
+#   --unique_envs \
+#   --save_per_task_trajectories \
+#   --experiment_dir experiments/tot_smoke_fixed \
+
+
+RUN_DIR="${BASE_DIR}/alfworld"
+
+cmd=(
+  python scripts/rollout/openmanus_rollout_debugger.py
+  --env alfworld
+  --total_envs 10
+  --test_times 1
+  --start_id 1
+  --max_steps 30
+  --history_length 40
+  --split "${ROLLOUT_SPLIT}"
+  --model "${ROLLOUT_MODEL}"
+  --temperature 0.0
+  --enable_debugger
+  --max_try 1
+  --debugger_model "${DEBUGGER_MODEL}"
+  --debugger_type vanilla
+  --debugger_temperature 0.0
+  --experiment_dir "${RUN_DIR}"
+  --save_all_attempts
+  --save_per_task_trajectories
+  --unique_envs
+  --debug
+  --parallel_num_phase_1 5
+  --concurrency 10
+  --llm_concurrency 80
+)
+
+if [[ -n "${ROLLOUT_URL}" ]]; then
+  cmd+=(--base_url "${ROLLOUT_URL}")
+fi
+
+if [[ -n "${DEBUGGER_URL}" ]]; then
+  cmd+=(--debugger_base_url "${DEBUGGER_URL}")
+fi
+
+if [[ -n "${TOGETHER_ARG}" ]]; then
+  # shellcheck disable=SC2206
+  together_tokens=(${TOGETHER_ARG})
+  cmd+=("${together_tokens[@]}")
+fi
+
+"${cmd[@]}"
+
+# python scripts/rollout/openmanus_rollout_debugger.py \
+#     --env alfworld \
+#     --total_envs 10 \
+#     --test_times 1 \
+#     --max_steps 5 \
+#     --history_length 40 \
+#     --model "${ROLLOUT_MODEL}" \
+#     --temperature 1.2 \
+#     --strategy tot \
+#     --max_try 3 \
+#     --beam_size 3 \
+#     --value_threshold 0.2 \
+#     --experiment_dir "${RUN_DIR}" \
+#     --save_all_attempts \
+#     --save_per_task_trajectories \
+#     --unique_envs \
+#     --concurrency 10 \
+#     --llm_concurrency 20
+# --base_url "${ROLLOUT_URL}" \
+#    --debugger_base_url "${DEBUGGER_URL}" \
+
+echo "\n=== Test 2: AlfWorld with DFSDT ==="
+RUN_DIR="${BASE_DIR}/alfworld_dfsdt"
+echo "Run directory: ${RUN_DIR}"
+
+# python scripts/rollout/openmanus_rollout_debugger.py \
+#     --env alfworld \
+#     --total_envs 8 \
+#     --test_times 1 \
+#     --max_steps 6 \
+#     --history_length 40 \
+#     --model "${ROLLOUT_MODEL}" \
+#     --temperature 1.0 \
+#     --strategy dfsdt \
+#     --max_try 3 \
+#     --beam_size 4 \
+#     --value_threshold 0.0 \
+#     --diversity_back_steps 2 \
+#     --diversity_back_steps_alt 4 \
+#     --propose_k 5 \
+#     --experiment_dir "${RUN_DIR}" \
+#     --save_all_attempts \
+#     --save_per_task_trajectories \
+#     --unique_envs \
+#     --concurrency 8 \
+#     --llm_concurrency 16
+
+
+
+
+# # Test 2: GAIA with debugger
+# echo "Testing GAIA with debugger..."
+# python scripts/rollout/openmanus_rollout_debugger.py \
+#     --env gaia \
+#     --batch_size 2 \
+#     --total_envs 4 \
+#     --test_times 1 \
+#     --max_steps 20 \
+#     --model gpt-4o-mini \
+#     --gaia_data_path data/gaia/val.json \
+#     --gaia_tools google_search wikipedia_knowledge_searcher python_code_generator \
+#     --enable_debugger \
+#     --max_debug_retry 3 \
+#     --debugger_model gpt-4o \
+#     --debug_output_dir logs/gaia/debug_analysis \
+#     --save_all_attempts \
+#     --dump_path logs/gaia/trajectories_debug.jsonl
+
+# # Test 3: WebShop with debugger
+# echo "Testing WebShop with debugger..."
+# python scripts/rollout/openmanus_rollout_debugger.py \
+#     --env webshop \
+#     --batch_size 2 \
+#     --total_envs 4 \
+#     --test_times 1 \
+#     --max_steps 25 \
+#     --model gpt-4o-mini \
+#     --webshop_train \
+#     --enable_debugger \
+#     --max_debug_retry 4 \
+#     --debugger_model gpt-4o \
+#     --debug_output_dir logs/webshop/debug_analysis \
+#     --save_all_attempts \
+#     --dump_path logs/webshop/trajectories_debug.jsonl
+
+# # Test 4: Without debugger (baseline)
+# echo "Testing without debugger (baseline)..."
+# python scripts/rollout/openmanus_rollout_debugger.py \
+#     --env alfworld \
+#     --batch_size 2 \
+#     --total_envs 4 \
+#     --test_times 1 \
+#     --max_steps 30 \
+#     --model gpt-4o-mini \
+#     --dump_path logs/alfworld/trajectories_baseline.jsonl
+
+echo "All tests completed. Check experiments/ directory for results."

@@ -1,0 +1,12 @@
+# =============================================================================
+# Threat Actors - Who might attack
+# =============================================================================
+# Define potential adversaries. Reference these in features.yaml.
+# IDs are symbolic names matching ^[a-z][a-z0-9_]*$ (e.g. external_attacker)
+#
+# Format (list of objects):
+#   - id: external_attacker
+#     description: "Unauthenticated user from the internet"
+# =============================================================================
+
+threat_actors: []

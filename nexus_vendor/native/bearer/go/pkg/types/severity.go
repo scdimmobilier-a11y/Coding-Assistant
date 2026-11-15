@@ -1,0 +1,10 @@
+package types
+
+var LevelCritical = "critical"
+var LevelHigh = "high"
+var LevelMedium = "medium"
+var LevelLow = "low"
+var LevelWarning = "warning"
+
+// these must be kept in order
+var Severities = []string{LevelCritical, LevelHigh, LevelMedium, LevelLow, LevelWarning}

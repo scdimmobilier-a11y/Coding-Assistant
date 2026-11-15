@@ -1,0 +1,18 @@
+# =============================================================================
+# Mitigations Catalog - Security controls
+# =============================================================================
+# Reusable mitigation definitions. Reference these in features.yaml.
+# IDs are symbolic names matching ^[a-z][a-z0-9_]*$ (e.g. input_validation)
+#
+# Format (simple):
+#   input_validation: Description of the security control
+#
+# Format (rich, with optional code references):
+#   input_validation:
+#     description: Description of the security control
+#     references:
+#       - file: "src/auth/middleware.ts"
+#         lines: "42-58"
+# =============================================================================
+
+mitigations: {}

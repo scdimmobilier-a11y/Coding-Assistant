@@ -1,0 +1,20 @@
+# Mitigations Catalog - API security controls
+#
+# Each mitigation can be a simple string or a rich object:
+#   some_id: "Description"
+#   another_id:
+#     description: "Description"
+#     references:                        # optional code references
+#       - file: "src/auth/middleware.ts"
+#         lines: "42-58"                 # optional line or range
+#
+mitigations:
+  object_level_authz: Object-level authorization checks on every request
+  uuid_identifiers: UUID/GUID for resource identifiers (not sequential)
+  short_lived_tokens: Short-lived tokens with refresh mechanism
+  api_key_rotation: API key rotation and revocation
+  response_filtering: Response filtering to minimum required fields
+  rate_limiting: Rate limiting per client/IP with backoff
+  parameterized_queries: Parameterized queries for database access
+  input_validation: Input validation with strict schemas
+  property_allowlist: Explicit allowlist for bindable properties
