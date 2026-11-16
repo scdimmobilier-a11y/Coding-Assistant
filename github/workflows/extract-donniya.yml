@@ -1,33 +1,51 @@
-name: Déplacer les sous-dossiers de DONNIYA à la racine
+name: Extraire les dossiers de DONNIYA.zip à la racine
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'DONNIYA.zip'
 
 permissions:
   contents: write
 
 jobs:
-  move-subfolders:
+  extract-folders:
     runs-on: ubuntu-latest
 
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
 
-      - name: Déplacer les sous-dossiers à la racine et supprimer DONNIYA
+      - name: Extraire les trois dossiers à la racine et supprimer DONNIYA.zip
         run: |
-          if [ ! -d "DONNIYA" ]; then
-            echo "Le dossier DONNIYA est introuvable à la racine."
+          if [ ! -f "DONNIYA.zip" ]; then
+            echo "DONNIYA.zip introuvable."
             exit 0
           fi
 
-          # Déplacer uniquement les sous-dossiers de DONNIYA vers la racine
-          find DONNIYA -mindepth 1 -maxdepth 1 -type d -exec mv -f {} . \;
+          # 1. Extraire dans un dossier temporaire isolé
+          mkdir -p temp_extract
+          unzip -q DONNIYA.zip -d temp_extract
 
-          # Supprimer le dossier DONNIYA (et tout éventuel fichier résiduel inutile)
-          rm -rf DONNIYA
+          # 2. Gérer le cas où l'archive contient un dossier parent (ex: DONNIYA/dossier1, dossier2, dossier3)
+          # ou directement les trois dossiers à l'intérieur
+          if [ -d "temp_extract/DONNIYA" ]; then
+            SOURCE_DIR="temp_extract/DONNIYA"
+          else
+            SOURCE_DIR="temp_extract"
+          fi
 
-      - name: Enregistrer et pousser les changements sur GitHub
+          # 3. Déplacer uniquement les dossiers extraits directement à la racine du dépôt
+          find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -type d -exec mv -f {} . \;
+
+          # 4. Nettoyer le dossier temporaire et supprimer l'archive DONNIYA.zip
+          rm -rf temp_extract
+          rm -f DONNIYA.zip
+
+      - name: Valider et pousser les changements sur GitHub
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -35,7 +53,7 @@ jobs:
           git add -A
           
           if ! git diff --staged --quiet; then
-            git commit -m "chore: déplacement des sous-dossiers de DONNIYA à la racine"
+            git commit -m "chore: extraction des 3 dossiers de DONNIYA.zip à la racine"
             git push
           else
             echo "Aucun changement détecté."
