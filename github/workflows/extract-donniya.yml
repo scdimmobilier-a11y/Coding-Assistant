@@ -1,0 +1,52 @@
+name: Extraire DONNIYA.zip et supprimer l'archive
+
+on:
+  # Déclenchement manuel depuis l'onglet "Actions" de GitHub
+  workflow_dispatch:
+  # Déclenchement automatique dès que DONNIYA.zip est poussé sur la branche main
+  push:
+    branches:
+      - main
+    paths:
+      - 'DONNIYA.zip'
+
+# Permissions indispensables pour que le workflow puisse modifier les fichiers du dépôt
+permissions:
+  contents: write
+
+jobs:
+  extract-and-clean:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code du dépôt
+        uses: actions/checkout@v4
+
+      - name: Vérifier l'archive, extraire les dossiers et supprimer le ZIP
+        run: |
+          if [ -f "DONNIYA.zip" ]; then
+            # Extraire tout le contenu à la racine (-o écrase les fichiers existants sans demander confirmation)
+            unzip -o DONNIYA.zip
+            
+            # Supprimer l'archive ZIP
+            rm DONNIYA.zip
+          else
+            echo "Le fichier DONNIYA.zip est introuvable à la racine du dépôt."
+            exit 0
+          fi
+
+      - name: Enregistrer (commit) et pousser les modifications sur GitHub
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Ajouter les nouveaux dossiers extraits et enregistrer la suppression du ZIP
+          git add -A
+          
+          # Vérifier s'il y a bien des changements avant de faire un commit
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: extraction de DONNIYA.zip et suppression de l'archive"
+            git push
+          else
+            echo "Aucune modification à enregistrer."
+          fi
