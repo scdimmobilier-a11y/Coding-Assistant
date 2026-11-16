@@ -1,5 +1,0 @@
-{
-  "extends": "../bridges/nodejs/tsconfig.json",
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules"]
-}
