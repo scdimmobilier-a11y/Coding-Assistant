@@ -1,52 +1,42 @@
-name: Extraire DONNIYA.zip et supprimer l'archive
+name: Déplacer les sous-dossiers de DONNIYA à la racine
 
 on:
-  # Déclenchement manuel depuis l'onglet "Actions" de GitHub
   workflow_dispatch:
-  # Déclenchement automatique dès que DONNIYA.zip est poussé sur la branche main
-  push:
-    branches:
-      - main
-    paths:
-      - 'DONNIYA.zip'
 
-# Permissions indispensables pour que le workflow puisse modifier les fichiers du dépôt
 permissions:
   contents: write
 
 jobs:
-  extract-and-clean:
+  move-subfolders:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Récupérer le code du dépôt
+      - name: Récupérer le dépôt
         uses: actions/checkout@v4
 
-      - name: Vérifier l'archive, extraire les dossiers et supprimer le ZIP
+      - name: Déplacer les sous-dossiers à la racine et supprimer DONNIYA
         run: |
-          if [ -f "DONNIYA.zip" ]; then
-            # Extraire tout le contenu à la racine (-o écrase les fichiers existants sans demander confirmation)
-            unzip -o DONNIYA.zip
-            
-            # Supprimer l'archive ZIP
-            rm DONNIYA.zip
-          else
-            echo "Le fichier DONNIYA.zip est introuvable à la racine du dépôt."
+          if [ ! -d "DONNIYA" ]; then
+            echo "Le dossier DONNIYA est introuvable à la racine."
             exit 0
           fi
 
-      - name: Enregistrer (commit) et pousser les modifications sur GitHub
+          # Déplacer uniquement les sous-dossiers de DONNIYA vers la racine
+          find DONNIYA -mindepth 1 -maxdepth 1 -type d -exec mv -f {} . \;
+
+          # Supprimer le dossier DONNIYA (et tout éventuel fichier résiduel inutile)
+          rm -rf DONNIYA
+
+      - name: Enregistrer et pousser les changements sur GitHub
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # Ajouter les nouveaux dossiers extraits et enregistrer la suppression du ZIP
           git add -A
           
-          # Vérifier s'il y a bien des changements avant de faire un commit
           if ! git diff --staged --quiet; then
-            git commit -m "chore: extraction de DONNIYA.zip et suppression de l'archive"
+            git commit -m "chore: déplacement des sous-dossiers de DONNIYA à la racine"
             git push
           else
-            echo "Aucune modification à enregistrer."
+            echo "Aucun changement détecté."
           fi
