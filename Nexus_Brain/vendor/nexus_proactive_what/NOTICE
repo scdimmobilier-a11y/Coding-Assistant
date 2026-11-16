@@ -1,0 +1,15 @@
+# Third-Party Notice — Nexus Proactive (What)
+
+This module is a rebranded, modified derivative of "ProactiveAgent", an
+academic research project by THUNLP (Tsinghua University NLP Lab).
+
+- Upstream license: Apache License 2.0
+- Upstream repository: github.com/thunlp/ProactiveAgent
+- Upstream paper: arXiv:2410.12361
+
+The original LICENSE file is preserved unmodified, as required by Apache
+2.0. If this module (or research building on it) is published, please cite
+the original THUNLP paper — see the Citation section in README.md, which
+was intentionally left pointing to THUNLP's real work rather than
+rebranded, since citation attribution is a factual/academic matter, not a
+product-branding one.

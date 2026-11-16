@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexus-brain"
+version = "1.0.0"
+description = "Nexus Brain — système unifié de planification et exécution adaptative (Nexus Core, Harness, Planner, Proactive WHAT/WHEN, Exec, autour de Nexus Functor)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # nexus-functor n'est pas publié sur PyPI (fourni tel quel, dans
+    # ./nexus_functor/) : `import nexus_brain` l'ajoute automatiquement à
+    # sys.path (voir nexus_brain/__init__.py) — inutile de le lister ici,
+    # cela casserait `pip install .` (paquet introuvable sur PyPI).
+    # `pip install -e ./nexus_functor` reste possible séparément si préféré.
+    "openai>=1.0",       # WhatEngine/q2d-style LLM calls (optional real upgrades)
+    "numpy>=1.24",       # nexus_exec.mini
+    "requests>=2.31",    # nexus_brain/adapters/codegen_adapter.py -> Nexus Assistant's
+                          # own HTTP API (POST /api/pipeline/run) — same pattern as
+                          # nexus_core_leon_bridge/bridge/leon_client.py, deliberately
+                          # NOT nexus_compose imported in-process (see that module's
+                          # own docstring for why).
+]
+
+[project.optional-dependencies]
+# Backend réel de Nexus Planner (solve-forbid-resolve). GPLv3 — reste
+# hors-process, invoqué uniquement via vendor/nexus_planner/nexus_brain_bridge.py.
+planner-real = ["pyperplan>=2.1"]
+# Router neuronal réel de Nexus Exec (sinon HeuristicExecRouter, sans dépendance).
+exec-real = ["torch>=2.0", "transformers>=4.30"]
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["nexus_brain*"]
+exclude = ["nexus_functor*", "vendor*", "tests*"]

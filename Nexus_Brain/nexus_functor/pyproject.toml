@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexus-functor"
+version = "0.1.0"
+description = "Hierarchical dynamic functor (F0-F3) for Nexus Brain — original, dependency-free."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["nexus_functor*"]

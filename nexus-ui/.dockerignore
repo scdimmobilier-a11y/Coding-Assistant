@@ -1,0 +1,12 @@
+# Miroir de .gitignore, complété pour Docker : COPY . . dans le Dockerfile
+# ne doit JAMAIS ramener le node_modules/dist de la machine hôte — npm ci
+# les reconstruit proprement à l'intérieur de l'image. Un node_modules
+# hôte copié par-dessus peut contenir des binaires natifs (esbuild,
+# rollup...) compilés pour un OS/arch différent de celui du conteneur —
+# pas juste un gaspillage d'espace, une vraie source d'échec silencieux.
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.local

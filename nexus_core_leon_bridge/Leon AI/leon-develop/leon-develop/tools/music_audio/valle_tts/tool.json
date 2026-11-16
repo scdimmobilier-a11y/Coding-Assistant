@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../schemas/tool-schemas/tool.json",
+  "tool_id": "valle_tts",
+  "toolkit_id": "music_audio",
+  "name": "VALL-E-X",
+  "description": "Zero-shot multilingual text-to-speech and voice cloning using VALL-E-X (Plachtaa/VALL-E-X), a community-trained, open-source reproduction of Microsoft's VALL-E X model. Speaks English, Chinese and Japanese, and can clone an arbitrary voice from a 3-10s reference clip.",
+  "icon_name": "mic-line",
+  "author": {
+    "name": "Nexus Assistant integration",
+    "url": "https://github.com/Plachtaa/VALL-E-X"
+  },
+  "resources": {
+    "vallex-checkpoint": [
+      "https://huggingface.co/Plachta/VALL-E-X/resolve/main/vallex-checkpoint.pt?download=true"
+    ]
+  },
+  "functions": {
+    "synthesizeSpeech": {
+      "description": "Synthesize speech from text using VALL-E-X, optionally cloning a voice from a short reference audio clip.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "output_path": { "type": "string" },
+                  "language": {
+                    "type": "string",
+                    "enum": ["auto", "en", "zh", "ja", "mix"]
+                  },
+                  "voice_preset": {
+                    "type": "string",
+                    "description": "One of VALL-E-X's bundled preset voice names, or Leon's own \"leon\" preset. Ignored if reference_audio_path is set."
+                  },
+                  "reference_audio_path": {
+                    "type": "string",
+                    "description": "3-10s WAV/MP3 clip to zero-shot clone a voice from."
+                  },
+                  "reference_text": {
+                    "type": "string",
+                    "description": "Transcript of reference_audio_path. If omitted, auto-transcribed with Whisper."
+                  }
+                },
+                "required": ["text", "output_path"],
+                "additionalProperties": false
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": { "type": "string" },
+                    "output_path": { "type": "string" },
+                    "language": {
+                      "type": "string",
+                      "enum": ["auto", "en", "zh", "ja", "mix"]
+                    },
+                    "voice_preset": { "type": "string" },
+                    "reference_audio_path": { "type": "string" },
+                    "reference_text": { "type": "string" }
+                  },
+                  "required": ["text", "output_path"],
+                  "additionalProperties": false
+                }
+              }
+            ]
+          },
+          "device": {
+            "type": "string",
+            "description": "cpu | cuda | auto"
+          }
+        },
+        "required": ["tasks"]
+      }
+    }
+  }
+}

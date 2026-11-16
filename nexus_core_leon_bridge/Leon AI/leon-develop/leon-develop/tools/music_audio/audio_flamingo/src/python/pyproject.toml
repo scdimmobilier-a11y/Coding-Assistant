@@ -1,0 +1,16 @@
+[project]
+name = "leon-tool-audio-flamingo"
+version = "1.0.0"
+requires-python = ">=3.10"
+dependencies = [
+  "torch==2.3.1",
+  "torchaudio==2.3.1",
+  "transformers @ git+https://github.com/huggingface/transformers.git",
+  "accelerate==0.33.0",
+  "huggingface_hub==0.24.6",
+  "librosa==0.10.2",
+  "soundfile==0.12.1"
+]
+
+[tool.uv]
+package = false
