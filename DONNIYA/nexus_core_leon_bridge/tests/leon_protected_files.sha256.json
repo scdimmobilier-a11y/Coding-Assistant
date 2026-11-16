@@ -1,0 +1,48 @@
+{
+  "leon_repo_relative_prefix": "leon-develop/leon-develop",
+  "note": "SHA256 hashes computed directly from the original, unmodified 'Leon AI.zip' this integration was prepared against. test_non_regression_voice_pipeline.py re-hashes the same paths inside a Leon checkout supplied via the LEON_REPO_ROOT env var and asserts equality -- i.e. it proves the wake word / ASR / TTS pipeline was not touched, rather than merely asserting it by assumption. UPDATE (VALL-E-X + Audio Flamingo 3 voice-model integration, see /VOICE_MODELS_INTEGRATION.md at the repo root): four of these files were intentionally extended afterwards, on purpose, to register two new voice/ASR providers -- server/src/core/tts/types.ts, server/src/core/tts/tts.ts, server/src/core/asr/types.ts, server/src/core/asr/asr-provider.ts. Their hashes below were updated to match that new, intentional content (each new hash was verified against a real diff from the original, listed in 'voice_model_integration_diffs_sha256' below for anyone who wants to check both ends). Every other file in this manifest -- both base classes, every other parser/synthesizer, the wake word engine -- is untouched and still checked against its pre-bridge, pre-voice-upgrade original hash.",
+  "protected_files_sha256": {
+    "server/src/core/asr/asr.ts": "0989443b3b1122f5f0dc66a75d204b336f8a780ce4d52e9da1608abe247ae9bf",
+    "server/src/core/asr/asr-provider.ts": "42a036a558aa2b1964b795d2edcdefcf9fe12df4c4d24aa40b5bf065ba7ef2da",
+    "server/src/core/asr/asr-parser-base.ts": "96bdc4bb9b577f73447b306ffbe2eebd43f6cc00206ed67e9d5ef1e97d2604d0",
+    "server/src/core/asr/types.ts": "fbca35851cfd1d89aee4ab49130c78ba18c51f944893358874852f73f3016e59",
+    "server/src/core/asr/parsers/coqui-asr-parser.ts": "dcf863df25fe48513cb90759b9eb2698e4b62061a1c1a4e9a889ac9730b590bf",
+    "server/src/core/asr/parsers/google-cloud-asr-parser.ts": "5ef8b40b0d78e94330aca1c57ce3703ba586265b87cb8561c51bf84062af0c11",
+    "server/src/core/asr/parsers/local-parser.ts": "d6bf3f338217b16bf8343a2dd971b416438d70bf85dd0ccc5b2a73e1c3605c1e",
+    "server/src/core/asr/parsers/watson-asr-parser.ts": "f75a9d5a1507da04cfdd5f2123557d91264ed4268d88db69f5ff0babdc561bf6",
+    "server/src/core/tts/tts.ts": "61cb4b0933b2481fc64451e4bd62e51425c3ce891c0d45e80850afa56eb75f95",
+    "server/src/core/tts/tts-synthesizer-base.ts": "b6f1e6f5ef39df5c048be9e86594c6ddbc65598407fefb60d7d077eadca4aec9",
+    "server/src/core/tts/types.ts": "2ed2426d9a00f62e344c7d47e27d6d7135cc03eae06e8b4eb712689180a10d78",
+    "server/src/core/tts/synthesizers/amazon-polly-synthesizer.ts": "bfde15c4acd43ff5a39d0c330dca55a393e1033c18a20a715d78a7550741a23b",
+    "server/src/core/tts/synthesizers/flite-synthesizer.ts": "545782c6952c60d2576e9a9e95aad2e747feb95791b9a2bbe7bfc9fd173713ad",
+    "server/src/core/tts/synthesizers/google-cloud-tts-synthesizer.ts": "1c00cf1861f370cc537606e3a87c138c92a9f60626935674dbc60451cea6e92d",
+    "server/src/core/tts/synthesizers/local-synthesizer.ts": "d5e12d80d107c987df7627b1320b55f3e89c6e45f87015d850a749acae4801d1",
+    "server/src/core/tts/synthesizers/watson-tts-synthesizer.ts": "11554becd235ab08b7e71954483fda02177df365f2fc39147e8c6bbe0b2d3286",
+    "tcp_server/src/lib/wake_word/api.py": "f7a7b3e490fed69b0e9ef6223007fc84cc5cf6642a26ab1735a33db01ab1a33d",
+    "core/data/models/audio/wake_word/Hey_Leon.onnx": "3da5fa700ca71e3cc26ce351eafc83310618861cf3353dd8a14e04fd865649d8",
+    "core/data/models/audio/wake_word/embedding.onnx": "70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f",
+    "core/data/models/audio/wake_word/melspectrogram.onnx": "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f"
+  },
+  "voice_model_integration_diffs_sha256": {
+    "note": "Pre-change ('original') vs post-change ('updated', also the value now in protected_files_sha256 above) hashes for the four intentionally-modified files, so the delta is auditable without needing a diff tool.",
+    "server/src/core/tts/types.ts": {
+      "original": "c60b16293dac68dab08ef6dff1578c7c3ce032f15ff5763e906cd989c41c97fd",
+      "updated": "2ed2426d9a00f62e344c7d47e27d6d7135cc03eae06e8b4eb712689180a10d78"
+    },
+    "server/src/core/tts/tts.ts": {
+      "original": "064302d92fadd1dbc397e4742d0549cda1727523f3e8be1afd0942b42c4ba182",
+      "updated": "61cb4b0933b2481fc64451e4bd62e51425c3ce891c0d45e80850afa56eb75f95"
+    },
+    "server/src/core/asr/types.ts": {
+      "original": "54999e3025b97fd18c60a87b4fe46d8818dc211f37f6e7f13c507dea0478b72b",
+      "updated": "fbca35851cfd1d89aee4ab49130c78ba18c51f944893358874852f73f3016e59"
+    },
+    "server/src/core/asr/asr-provider.ts": {
+      "original": "143d92590112eb55fc2f17127cda7553a8e0c806a968db9a5018229af1801f34",
+      "updated": "42a036a558aa2b1964b795d2edcdefcf9fe12df4c4d24aa40b5bf065ba7ef2da"
+    }
+  },
+  "socket_server_ts_relative_path": "server/src/core/socket-server.ts",
+  "socket_server_ts_original_sha256": "35e767f721d486e97da100cb326024e153344e4c2869d8b928aaca12f5861bc2",
+  "socket_server_ts_patched_sha256": "f9154ee96e4df944d7ecf89cc5f3d2745d4b71853c1678e8d507293632df846a"
+}
